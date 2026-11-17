@@ -1,4 +1,4 @@
-# xmip-core-archive-s3
+# xmip-core-archive-aws-s3
 
 S3 archive target: one item is one object in a bucket. A technology of [xmip-core-archive](https://github.com/IlleNilsson/xmip-core-archive).
 
