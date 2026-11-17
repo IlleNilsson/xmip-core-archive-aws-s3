@@ -10,7 +10,7 @@
 //!
 //! A xmip-core-archive **technology** (repository-model.md): it depends on
 //! the archive capability for the [`ArchiveStore`] trait and its item,
-//! receipt and error types, and on the S3 transport technology for the
+//! receipt and error types, and on the aws-s3 transport technology for the
 //! signed requests — Signature Version 4, path-style, one connection a
 //! call. The same four fields every archive technology carries —
 //! `data_type`, `identifier`, `bytes`, `metadata` — are laid out as
@@ -18,15 +18,15 @@
 //! metadata text at the same key with `.meta` appended.
 //!
 //! An archive never deletes (ADR-0040): this one puts and gets, nothing
-//! else. The receipt is `s3://<bucket>/<key>` with the SHA-256 of the bytes
-//! as its checksum, and restoring checks the bytes that come back against
-//! it.
+//! else. The receipt is `aws-s3://<bucket>/<key>` with the SHA-256 of the
+//! bytes as its checksum, and restoring checks the bytes that come back
+//! against it.
 
 use std::time::Duration;
 
 use archive::{ArchiveError, ArchiveItem, ArchiveReceipt, ArchiveStore};
 use archive::{checksum, layout, location, metadata};
-use s3::Client;
+use aws_s3::Client;
 
 /// An archive that keeps items as objects under one prefix of one bucket.
 pub struct S3Archive {
@@ -113,13 +113,13 @@ impl ArchiveStore for S3Archive {
             .put(&self.bucket, &layout::meta_key(&key), metadata.as_bytes())
             .map_err(ArchiveError::caused_by)?;
         Ok(ArchiveReceipt {
-            location: format!("s3://{}/{key}", self.bucket),
+            location: format!("aws-s3://{}/{key}", self.bucket),
             checksum: Some(checksum::sha256_hex(&item.bytes)),
         })
     }
 
     fn restore(&self, receipt: &ArchiveReceipt) -> Result<ArchiveItem, ArchiveError> {
-        let (bucket, key) = location::bucket_key("s3", &receipt.location)?;
+        let (bucket, key) = location::bucket_key("aws-s3", &receipt.location)?;
         let (data_type, identifier) =
             layout::split_key(&self.prefix, key).ok_or_else(|| ArchiveError {
                 message: format!(
@@ -157,7 +157,7 @@ impl ArchiveStore for S3Archive {
 mod tests {
     use super::*;
     use archive::fixture::{item, secs};
-    use s3::{Event, Session};
+    use aws_s3::{Event, Session};
     use std::assert_matches;
     use std::net::TcpListener;
     use std::thread::JoinHandle;
@@ -190,7 +190,10 @@ mod tests {
         let (address, far_end) = far_end(2);
         let original = item("json#1");
         let receipt = store(&address).archive(original.clone()).expect("archive");
-        assert_eq!(receipt.location, "s3://orders-archive/retained/json/json#1");
+        assert_eq!(
+            receipt.location,
+            "aws-s3://orders-archive/retained/json/json#1"
+        );
         assert_eq!(
             receipt.checksum.as_deref(),
             Some(checksum::sha256_hex(&original.bytes).as_str())
@@ -209,7 +212,7 @@ mod tests {
         assert_matches!(
             &events[0],
             Event::Stored(arrived)
-                if arrived.origin_uri == "s3://orders-archive/retained/json/json#1"
+                if arrived.origin_uri == "aws-s3://orders-archive/retained/json/json#1"
         );
     }
 
@@ -224,11 +227,11 @@ mod tests {
         let (_, events) = far_end.join().expect("thread");
         assert_eq!(
             events[2],
-            Event::Retrieved("s3://orders-archive/retained/json/json#2".to_string())
+            Event::Retrieved("aws-s3://orders-archive/retained/json/json#2".to_string())
         );
         assert_eq!(
             events[3],
-            Event::Retrieved("s3://orders-archive/retained/json/json#2.meta".to_string())
+            Event::Retrieved("aws-s3://orders-archive/retained/json/json#2.meta".to_string())
         );
     }
 
@@ -240,15 +243,15 @@ mod tests {
         receipt.checksum = Some("0".repeat(64));
         let changed = store.restore(&receipt).expect_err("checksum");
         assert!(changed.message.contains("not 0000"), "{changed}");
-        receipt.location = "s3://orders-archive/retained/json/none".to_string();
+        receipt.location = "aws-s3://orders-archive/retained/json/none".to_string();
         receipt.checksum = None;
         let missing = store.restore(&receipt).expect_err("missing");
         assert!(missing.message.contains("404 NoSuchKey"), "{missing}");
         far_end.join().expect("thread");
         for location in [
-            "gcs://bucket/key",
-            "s3://bucket",
-            "s3://orders-archive/elsewhere/n",
+            "google-cloud-storage://bucket/key",
+            "aws-s3://bucket",
+            "aws-s3://orders-archive/elsewhere/n",
         ] {
             receipt.location = location.to_string();
             assert!(store.restore(&receipt).is_err(), "{location}");

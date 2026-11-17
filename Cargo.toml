@@ -2,11 +2,11 @@
 [workspace]
 
 [package]
-name = "xmip-core-archive-s3"
+name = "xmip-core-archive-aws-s3"
 version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
-repository = "https://github.com/IlleNilsson/xmip-core-archive-s3"
+repository = "https://github.com/IlleNilsson/xmip-core-archive-aws-s3"
 description = "S3 archive target: one item is one object in a bucket. A xmip-core-archive technology."
 publish = false
 
@@ -19,7 +19,7 @@ path = "src/lib.rs"
 archive = { package = "xmip-core-archive", git = "https://github.com/IlleNilsson/xmip-core-archive", branch = "main" }
 # The connection: the sibling transport technology's Client puts and gets
 # signed objects, and its Session is the far end a test binds.
-s3 = { package = "xmip-core-transport-s3", git = "https://github.com/IlleNilsson/xmip-core-transport-s3", branch = "main" }
+aws_s3 = { package = "xmip-core-transport-aws-s3", git = "https://github.com/IlleNilsson/xmip-core-transport-aws-s3", branch = "main" }
 
 [dev-dependencies]
 # The tests archive the capability's fixture item (ADR-0044); the feature
