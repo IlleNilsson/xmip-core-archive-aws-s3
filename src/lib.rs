@@ -18,9 +18,10 @@
 //! metadata text at the same key with `.meta` appended.
 //!
 //! An archive never deletes (ADR-0040): this one puts and gets, nothing
-//! else. The receipt is `aws-s3://<bucket>/<key>` with the SHA-256 of the
-//! bytes as its checksum, and restoring checks the bytes that come back
-//! against it.
+//! else. The receipt is `aws-s3://<bucket>/<key>`, the transport's origin
+//! for the object, written by its `origin`, with the SHA-256 of the bytes
+//! as its checksum, and restoring checks the bytes that come back against
+//! it.
 
 use std::time::Duration;
 
@@ -113,7 +114,7 @@ impl ArchiveStore for S3Archive {
             .put(&self.bucket, &layout::meta_key(&key), metadata.as_bytes())
             .map_err(ArchiveError::caused_by)?;
         Ok(ArchiveReceipt {
-            location: format!("aws-s3://{}/{key}", self.bucket),
+            location: aws_s3::origin(&self.bucket, &key),
             checksum: Some(checksum::sha256_hex(&item.bytes)),
         })
     }
