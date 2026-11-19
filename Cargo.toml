@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/IlleNilsson/xmip-core-archive-aws-s3"
-description = "S3 archive target: one item is one object in a bucket. A xmip-core-archive technology."
+description = "S3 archive target: one item is one object in a bucket, its TOML metadata a second object under .meta, each created only where none is and never written over. A xmip-core-archive technology."
 publish = false
 
 [lib]
@@ -15,10 +15,11 @@ path = "src/lib.rs"
 
 [dependencies]
 # A Technology depends on its parent Capability, never the reverse
-# (repository-model.md). The ArchiveStore trait and its types live there.
+# (repository-model.md). The ArchiveStore trait, its types and the one
+# rule of a store laid out by name (`archive::named`) live there.
 archive = { package = "xmip-core-archive", git = "https://github.com/IlleNilsson/xmip-core-archive", branch = "main" }
-# The connection: the sibling transport technology's Client puts and gets
-# signed objects, and its Session is the far end a test binds.
+# The connection: the sibling transport technology's Client creates and
+# gets signed objects, and its Session is the far end a test binds.
 aws_s3 = { package = "xmip-core-transport-aws-s3", git = "https://github.com/IlleNilsson/xmip-core-transport-aws-s3", branch = "main" }
 
 [dev-dependencies]
